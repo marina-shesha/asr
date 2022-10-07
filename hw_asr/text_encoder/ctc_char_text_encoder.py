@@ -45,19 +45,29 @@ class CTCCharTextEncoder(CharTextEncoder):
             ('', self.EMPTY_TOK): 1.0
         }
         # hypos.append(Hypothesis('', 1.0))
+        sz = probs.shape[0]
+        i = 0
         for prob in probs:
-            dp = self.extend_and_merge(dp, prob)
-            dp = self.cut_beams(dp, beam_size)
-        for (res, last_char), v in dp.items():
-            if last_char != self.EMPTY_TOK:
-                text = res+last_char
-                prob = v
-                hypos.append(Hypothesis(text, prob))
+            if i < sz - 1:
+                dp = self.extend_and_merge(dp, prob)
+                dp = self.cut_beams(dp, beam_size)
             else:
-                text = res
-                prob = v
-                hypos.append(Hypothesis(text, prob))
+                dp = self.extend_and_merge(dp, prob)
+                dp = self.final_merge(dp)
+                dp = self.cut_beams(dp, beam_size)
+            i += 1
+        for (res, last_char), v in dp.items():
+            hypos.append(Hypothesis(res, v))
         return sorted(hypos, key=lambda x: x.prob, reverse=True)
+
+    def final_merge(self, dp):
+        new_dp = defaultdict(float)
+        for (res, last_char), v in dp.items():
+            if last_char == self.EMPTY_TOK:
+                new_dp[(res, last_char)] += v
+            else:
+                new_dp[(res + last_char, last_char)] += v
+        return new_dp
 
     def extend_and_merge(self, dp, prob):
         new_dp = defaultdict(float)
@@ -72,4 +82,4 @@ class CTCCharTextEncoder(CharTextEncoder):
         return new_dp
 
     def cut_beams(self, dp, beam_size):
-        return dict(list(sorted(dp.items, key=lambda x: x[1]))[-beam_size:])
+        return dict(list(sorted(dp.items(), key=lambda x: x[1]))[-beam_size:])
