@@ -66,16 +66,12 @@ class DeepSpeech(BaseModel):
             padding=self.context_size // 2,
             bias=False),
             nn.ReLU(inplace=True))
-
-        self.fc = Sequential(
-            nn.BatchNorm1d(self.hidden_size),
-            nn.Linear(self.hidden_size, self.n_class)
-        )
+        self.layer_linear_norm = nn.BatchNorm1d(self.hidden_size)
+        self.fc = nn.Linear(self.hidden_size, self.n_class)
 
     def forward(self, spectrogram, spectrogram_length, **batch):
         x = spectrogram.unsqueeze(dim=1)
         x, lengths = self.conv(x, spectrogram_length)
-
         batch_size, channels, num_features, len = x.shape
         x = x.permute(0, 3, 1, 2)
         x = x.view(batch_size, len, channels * num_features)
@@ -83,6 +79,8 @@ class DeepSpeech(BaseModel):
             x = l(x, lengths)
         x = x.permute(0, 2, 1)
         x = self.lookahead(x)
+        x = self.layer_linear_norm(x)
+        x = x.permute(0, 2, 1)
         x = self.fc(x)
 
         return {"logits": x}
