@@ -15,10 +15,11 @@
     "spectrogram": []
   },
   "arch": {
-    "type": "BaselineModel",
+    "type": "DeepSpeech",
     "args": {
       "n_feats": 128,
-      "fc_hidden": 512
+      "hidden_size": 512,
+      "context_size": 80
     }
   },
   "data": {

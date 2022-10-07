@@ -21,11 +21,13 @@ def collate_fn(dataset_items: List[dict]):
     lengths_spec = []
     lengths_text = []
     texts = []
+    audio_paths = []
     dim_1_spec = dataset_items[0]['spectrogram'].shape[1]
     for data in dataset_items:
         lengths_spec.append(data['spectrogram'].shape[2])
         lengths_text.append(data['text_encoded'].shape[1])
         texts.append(data['text'])
+        audio_paths.append(data['audio_path'])
     batch_spec = torch.zeros(len(dataset_items), dim_1_spec, max(lengths_spec))
     batch_texts = torch.zeros(len(dataset_items), max(lengths_text))
     for i, data in enumerate(dataset_items):
@@ -39,6 +41,7 @@ def collate_fn(dataset_items: List[dict]):
                     "text_encoded": batch_texts,
                     "text_encoded_length": lengths_text,
                     "text": texts,
-                    'spectogram_length' :  lengths_spec,
+                    'spectrogram_length':  lengths_spec,
+                    'audio_path': audio_paths
                     }
     return result_batch
