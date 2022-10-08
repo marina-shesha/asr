@@ -42,6 +42,12 @@ class Trainer(BaseTrainer):
         self.skip_oom = skip_oom
         self.text_encoder = text_encoder
         self.beam_search = build_ctcdecoder([''] + text_encoder.alphabet)
+        self.beam_search_with_lm = build_ctcdecoder(
+            [''] + text_encoder.alphabet,
+            kenlm_model_path="kenlm_model.arpa",
+            alpha=0.5,
+            beta=1.0,
+        )
         self.config = config
         self.train_dataloader = dataloaders["train"]
         if len_epoch is None:
@@ -228,13 +234,21 @@ class Trainer(BaseTrainer):
             self.beam_search.decode_beams(logits[i][:log_probs_length[i]], beam_width=100) for i in range(logits.shape[0])
         ]
 
-        tuples = list(zip(argmax_texts, hypos, text, argmax_texts_raw, audio_path))
+        hypos_lm = [
+            self.beam_search_with_lm.decode_beams(logits[i][:log_probs_length[i]], beam_width=100) for i in
+            range(logits.shape[0])
+        ]
+
+        tuples = list(zip(argmax_texts, hypos, hypos_lm, text, argmax_texts_raw, audio_path))
         shuffle(tuples)
         rows = {}
         mean_beam_wer = []
         mean_beam_cer = []
 
-        for pred, hypos, target, raw_pred, audio_path in tuples[:examples_to_log]:
+        mean_beam_wer_lm = []
+        mean_beam_cer_lm = []
+
+        for pred, hypos, hypos_lm, target, raw_pred, audio_path in tuples[:examples_to_log]:
             target = BaseTextEncoder.normalize_text(target)
             argmax_wer = calc_wer(target, pred) * 100
             argmax_cer = calc_cer(target, pred) * 100
@@ -242,11 +256,20 @@ class Trainer(BaseTrainer):
             beam_wer_width = np.array([calc_wer(target, pred_beam[0]) * 100 for pred_beam in hypos])
             beam_cer_width = np.array([calc_cer(target, pred_beam[0]) * 100 for pred_beam in hypos])
 
+            beam_wer_width_lm = np.array([calc_wer(target, pred_beam[0]) * 100 for pred_beam in hypos_lm])
+            beam_cer_width_lm = np.array([calc_cer(target, pred_beam[0]) * 100 for pred_beam in hypos_lm])
+
             ind_min_wer = beam_wer_width.argmin()
             ind_min_cer = beam_cer_width.argmin()
 
+            ind_min_wer_lm = beam_wer_width_lm.argmin()
+            ind_min_cer_lm = beam_cer_width_lm.argmin()
+
             mean_beam_wer.append(beam_wer_width[0])
             mean_beam_cer.append(beam_cer_width[0])
+
+            mean_beam_wer_lm.append(beam_wer_width_lm[0])
+            mean_beam_cer_lm.append(beam_cer_width_lm[0])
 
             rows[Path(audio_path).name] = {
                 "target": target,
@@ -258,14 +281,27 @@ class Trainer(BaseTrainer):
                 "probability beam search": np.exp(hypos[0][3]),
                 "beam search wer": mean_beam_wer[-1],
                 "beam search cer": mean_beam_cer[-1],
-                "min wer": beam_wer_width[ind_min_wer],
-                "min cer": beam_cer_width[ind_min_cer],
+                "oracle wer": beam_wer_width[ind_min_wer],
+                "oracle cer": beam_cer_width[ind_min_cer],
+                "beam search prediction with lm": hypos_lm[0][0],
+                "probability beam search with lm": np.exp(hypos_lm[0][3]),
+                "beam search wer with lm": mean_beam_wer_lm[-1],
+                "beam search cer with lm": mean_beam_cer_lm[-1],
+                "oracle wer with lm": beam_wer_width_lm[ind_min_wer_lm],
+                "oracle cer with lm": beam_cer_width_lm[ind_min_cer_lm],
             }
         self.writer.add_table("predictions", pd.DataFrame.from_dict(rows, orient="index"))
         mean_wer = sum(mean_beam_wer)/len(mean_beam_wer)
         mean_cer = sum(mean_beam_cer)/len(mean_beam_cer)
+
+        mean_wer_lm = sum(mean_beam_wer_lm) / len(mean_beam_wer_lm)
+        mean_cer_lm = sum(mean_beam_cer_lm) / len(mean_beam_cer_lm)
+
         self.writer.add_scalar(f'beam search wer', mean_wer)
         self.writer.add_scalar(f'beam search cer', mean_cer)
+
+        self.writer.add_scalar(f'beam search with lm wer', mean_wer_lm)
+        self.writer.add_scalar(f'beam search with lm cer', mean_cer_lm)
 
     def _log_spectrogram(self, spectrogram_batch):
         spectrogram = random.choice(spectrogram_batch.cpu())
