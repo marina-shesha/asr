@@ -11,7 +11,32 @@
     "log_spec": true
   },
   "augmentations": {
-    "wave": [],
+    "wave": [
+      {
+        "type": "Noise",
+        "args": {}
+      },
+      {
+        "type": "PitchShift",
+        "args": {
+          "sr": 16000,
+          "n_step": -3
+        }
+      },
+      {
+        "type": "TimeStretching",
+        "args": {
+          "rate": 1.5
+        }
+      },
+      {
+        "type": "Volume",
+        "args": {
+          "gain": 2.0,
+          "gain_type": "amplitude"
+        }
+      }
+    ],
     "spectrogram": []
   },
   "arch": {

@@ -46,7 +46,7 @@ class Trainer(BaseTrainer):
             [''] + text_encoder.alphabet,
             kenlm_model_path="kenlm_model.arpa",
             alpha=0.5,
-            beta=1.0,
+            beta=0.05,
         )
         self.config = config
         self.train_dataloader = dataloaders["train"]
@@ -125,6 +125,7 @@ class Trainer(BaseTrainer):
                 )
                 self._log_predictions(**batch)
                 self._log_spectrogram(batch["spectrogram"])
+                self._log_audio(batch['audio'])
                 self._log_scalars(self.train_metrics)
                 # we don't want to reset train metrics at the start of every epoch
                 # because we are interested in recent train metrics
@@ -235,8 +236,7 @@ class Trainer(BaseTrainer):
         ]
 
         hypos_lm = [
-            self.beam_search_with_lm.decode_beams(logits[i][:log_probs_length[i]], beam_width=100) for i in
-            range(logits.shape[0])
+            self.beam_search_with_lm.decode_beams(logits[i][:log_probs_length[i]], beam_width=100) for i in range(logits.shape[0])
         ]
 
         tuples = list(zip(argmax_texts, hypos, hypos_lm, text, argmax_texts_raw, audio_path))
@@ -307,6 +307,11 @@ class Trainer(BaseTrainer):
         spectrogram = random.choice(spectrogram_batch.cpu())
         image = PIL.Image.open(plot_spectrogram_to_buf(spectrogram))
         self.writer.add_image("spectrogram", ToTensor()(image))
+
+    def _log_audio(self, audio_batch):
+        audio = random.choice(audio_batch.cpu())
+        sr = self.config["preprocessing"]["sr"]
+        self.writer.add_audio("audio", audio, sample_rate=sr)
 
     @torch.no_grad()
     def get_grad_norm(self, norm_type=2):

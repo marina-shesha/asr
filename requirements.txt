@@ -17,5 +17,6 @@ pillow
 
 editdistance
 pyctcdecode
+librosa
 
 https://github.com/kpu/kenlm/archive/master.zip
