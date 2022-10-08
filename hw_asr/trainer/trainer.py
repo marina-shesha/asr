@@ -15,6 +15,8 @@ from hw_asr.base.base_text_encoder import BaseTextEncoder
 from hw_asr.logger.utils import plot_spectrogram_to_buf
 from hw_asr.metric.utils import calc_cer, calc_wer
 from hw_asr.utils import inf_loop, MetricTracker
+from pyctcdecode import build_ctcdecoder
+import numpy as np
 
 
 class Trainer(BaseTrainer):
@@ -39,6 +41,7 @@ class Trainer(BaseTrainer):
         super().__init__(model, criterion, metrics, optimizer, config, device)
         self.skip_oom = skip_oom
         self.text_encoder = text_encoder
+        self.beam_search = build_ctcdecoder([''] + text_encoder.alphabet)
         self.config = config
         self.train_dataloader = dataloaders["train"]
         if len_epoch is None:
@@ -211,6 +214,7 @@ class Trainer(BaseTrainer):
         # TODO: implement logging of beam search results
         if self.writer is None:
             return
+
         argmax_inds = log_probs.cpu().argmax(-1).numpy()
         argmax_inds = [
             inds[: int(ind_len)]
@@ -218,22 +222,50 @@ class Trainer(BaseTrainer):
         ]
         argmax_texts_raw = [self.text_encoder.decode(inds) for inds in argmax_inds]
         argmax_texts = [self.text_encoder.ctc_decode(inds) for inds in argmax_inds]
-        tuples = list(zip(argmax_texts, text, argmax_texts_raw, audio_path))
+
+        logits = log_probs.detach().cpu().numpy()
+        hypos = [
+            self.beam_search.decode_beams(logits[i][:log_probs_length[i]], beam_width=100) for i in range(logits.shape[0])
+        ]
+
+        tuples = list(zip(argmax_texts, hypos, text, argmax_texts_raw, audio_path))
         shuffle(tuples)
         rows = {}
-        for pred, target, raw_pred, audio_path in tuples[:examples_to_log]:
+        mean_beam_wer = []
+        mean_beam_cer = []
+
+        for pred, hypos, target, raw_pred, audio_path in tuples[:examples_to_log]:
             target = BaseTextEncoder.normalize_text(target)
-            wer = calc_wer(target, pred) * 100
-            cer = calc_cer(target, pred) * 100
+            argmax_wer = calc_wer(target, pred) * 100
+            argmax_cer = calc_cer(target, pred) * 100
+
+            beam_wer_width = np.array([calc_wer(target, pred_beam[0]) * 100 for pred_beam in hypos])
+            beam_cer_width = np.array([calc_cer(target, pred_beam[0]) * 100 for pred_beam in hypos])
+
+            ind_min_wer = beam_wer_width.argmin()
+            ind_min_cer = beam_cer_width.argmin()
+
+            mean_beam_wer.append(beam_wer_width[0])
+            mean_beam_cer.append(beam_cer_width[0])
 
             rows[Path(audio_path).name] = {
                 "target": target,
-                "raw prediction": raw_pred,
-                "predictions": pred,
-                "wer": wer,
-                "cer": cer,
+                "raw argmax prediction": raw_pred,
+                "argmax predictions": pred,
+                "argmax wer": argmax_wer,
+                "argmax cer": argmax_cer,
+                "beam search prediction": hypos[0][0],
+                "probability beam search": np.exp(hypos[0][3]),
+                "beam search wer": mean_beam_wer[-1],
+                "beam search cer": mean_beam_cer[-1],
+                "min wer": beam_wer_width[ind_min_wer],
+                "min cer": beam_cer_width[ind_min_cer],
             }
         self.writer.add_table("predictions", pd.DataFrame.from_dict(rows, orient="index"))
+        mean_wer = sum(mean_beam_wer)/len(mean_beam_wer)
+        mean_cer = sum(mean_beam_cer)/len(mean_beam_cer)
+        self.writer.add_scalar(f'beam search wer', mean_wer)
+        self.writer.add_scalar(f'beam search cer', mean_cer)
 
     def _log_spectrogram(self, spectrogram_batch):
         spectrogram = random.choice(spectrogram_batch.cpu())

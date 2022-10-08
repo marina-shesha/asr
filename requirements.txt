@@ -14,3 +14,8 @@ wandb
 pyctcdecode
 torchaudio~=0.11.0
 pillow
+
+editdistance
+pyctcdecode
+
+https://github.com/kpu/kenlm/archive/master.zip
