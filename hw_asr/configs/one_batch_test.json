@@ -33,9 +33,10 @@
     ],
     "spectrogram": [
       {
-        "type": "TimeStretch",
+        "type": "TimeStretching",
         "args": {
-          "n_freq": 128
+          "n_freq": 128,
+          "fix_rate": 1.2
         }
       }
     ]
