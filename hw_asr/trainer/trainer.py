@@ -44,7 +44,7 @@ class Trainer(BaseTrainer):
         self.beam_search = build_ctcdecoder([''] + text_encoder.alphabet)
         self.beam_search_with_lm = build_ctcdecoder(
             [''] + text_encoder.alphabet,
-            kenlm_model_path="kenlm_model.arpa",
+            kenlm_model_path=self.config["beam_search"]["len_lm_path"],
             alpha=0.5,
             beta=0.05,
         )
