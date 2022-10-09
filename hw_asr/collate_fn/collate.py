@@ -38,7 +38,6 @@ def collate_fn(dataset_items: List[dict]):
 
     lengths_text = torch.tensor(lengths_text).long()
     lengths_spec = torch.tensor(lengths_spec).long()
-
     result_batch = {"spectrogram": batch_spec,
                     "text_encoded": batch_texts,
                     "text_encoded_length": lengths_text,

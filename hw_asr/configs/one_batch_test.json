@@ -24,12 +24,6 @@
         }
       },
       {
-        "type": "TimeStretching",
-        "args": {
-          "rate": 1.5
-        }
-      },
-      {
         "type": "Volume",
         "args": {
           "gain": 2.0,
@@ -37,7 +31,14 @@
         }
       }
     ],
-    "spectrogram": []
+    "spectrogram": [
+      {
+        "type": "TimeStretch",
+        "args": {
+          "n_freq": 128
+        }
+      }
+    ]
   },
   "arch": {
     "type": "DeepSpeech",
