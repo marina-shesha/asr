@@ -8,7 +8,8 @@ class TimeStretching(AugmentationBase):
         self._aug = torchaudio.transforms.TimeStretch(n_freq=n_freq)
         self.fix_rate = fix_rate
         self.p = p
+
     def __call__(self, data: Tensor):
         if random.random() < self.p:
-          datd = self._aug(data, self.fix_rate)
+            data = self._aug(data, self.fix_rate)
         return data

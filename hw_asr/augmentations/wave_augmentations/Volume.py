@@ -11,5 +11,5 @@ class Volume(AugmentationBase):
 
     def __call__(self, data: Tensor):
         if random.random() < self.p:
-          data = self.voler(data)
+            data = self.voler(data)
         return data

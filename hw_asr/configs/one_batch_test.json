@@ -14,20 +14,24 @@
     "wave": [
       {
         "type": "Noise",
-        "args": {}
+        "args": {
+          "p": 0.1
+        }
       },
       {
         "type": "PitchShift",
         "args": {
           "sr": 16000,
-          "n_step": -3
+          "n_step": -3,
+          "p": 0.1
         }
       },
       {
         "type": "Volume",
         "args": {
           "gain": 2.0,
-          "gain_type": "amplitude"
+          "gain_type": "amplitude",
+          "p": 0.1
         }
       }
     ],
@@ -36,7 +40,8 @@
         "type": "TimeStretching",
         "args": {
           "n_freq": 128,
-          "fix_rate": 1.2
+          "fix_rate": 1.2,
+          "p": 0.1
         }
       }
     ]
