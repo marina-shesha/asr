@@ -227,11 +227,11 @@ class Trainer(BaseTrainer):
 
         logits = log_probs.detach().cpu().numpy()
         hypos = [
-            self.text_encoder.fast_ctc_beam_search_decoder(logits[i], log_probs_length[i], beam_width=self.beam_size) for i in range(logits.shape[0])
+            self.text_encoder.fast_ctc_beam_search_decoder(logits[i], log_probs_length[i], beam_size=self.beam_size) for i in range(logits.shape[0])
         ]
 
         hypos_lm = [
-            self.text_encoder.fast_ctc_beam_search_decoder_with_lm(logits[i], log_probs_length[i], beam_width=self.beam_size) for i in range(logits.shape[0])
+            self.text_encoder.fast_ctc_beam_search_decoder_with_lm(logits[i], log_probs_length[i], beam_size=self.beam_size) for i in range(logits.shape[0])
         ]
 
         tuples = list(zip(argmax_texts, hypos, hypos_lm, text, argmax_texts_raw, audio_path))
