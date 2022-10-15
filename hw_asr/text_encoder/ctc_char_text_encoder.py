@@ -4,6 +4,7 @@ from typing import List, NamedTuple
 import torch
 
 from .char_text_encoder import CharTextEncoder
+from pyctcdecode import build_ctcdecoder
 
 
 class Hypothesis(NamedTuple):
@@ -83,3 +84,24 @@ class CTCCharTextEncoder(CharTextEncoder):
 
     def cut_beams(self, dp, beam_size):
         return dict(list(sorted(dp.items(), key=lambda x: x[1]))[-beam_size:])
+
+    def fast_ctc_beam_search_decoder(self, logits: torch.tensor, log_probs_length,
+                        beam_size: int = 100):
+
+        beam_search = build_ctcdecoder([''] + self.alphabet)
+        hypos = beam_search.decode_beams(logits[:log_probs_length], beam_width=beam_size)
+
+        return hypos
+
+    def fast_ctc_beam_search_decoder_with_lm(self, logits: torch.tensor, log_probs_length,
+                        beam_size: int = 100):
+
+        beam_search = build_ctcdecoder(
+            [''] + self.alphabet,
+            kenlm_model_path="asr/kenlm_model.arpa",
+            alpha=0.5,
+            beta=0.05
+        )
+        hypos = beam_search.decode_beams(logits[:log_probs_length], beam_width=beam_size)
+
+        return hypos

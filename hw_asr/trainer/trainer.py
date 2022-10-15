@@ -164,6 +164,7 @@ class Trainer(BaseTrainer):
                 self.lr_scheduler.step()
 
         metrics.update("loss", batch["loss"].item())
+        batch['beam_size'] = 300
         for met in self.metrics:
             metrics.update(met.name, met(**batch))
         return batch
@@ -232,11 +233,11 @@ class Trainer(BaseTrainer):
 
         logits = log_probs.detach().cpu().numpy()
         hypos = [
-            self.beam_search.decode_beams(logits[i][:log_probs_length[i]], beam_width=100) for i in range(logits.shape[0])
+            self.beam_search.decode_beams(logits[i][:log_probs_length[i]], beam_width=300) for i in range(logits.shape[0])
         ]
 
         hypos_lm = [
-            self.beam_search_with_lm.decode_beams(logits[i][:log_probs_length[i]], beam_width=100) for i in range(logits.shape[0])
+            self.beam_search_with_lm.decode_beams(logits[i][:log_probs_length[i]], beam_width=300) for i in range(logits.shape[0])
         ]
 
         tuples = list(zip(argmax_texts, hypos, hypos_lm, text, argmax_texts_raw, audio_path))

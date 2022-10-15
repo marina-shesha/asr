@@ -29,7 +29,7 @@
       {
         "type": "Volume",
         "args": {
-          "gain": 2.0,
+          "gain": 1.5,
           "gain_type": "amplitude",
           "p": 0.1
         }
@@ -96,7 +96,7 @@
     "type": "CTCLoss",
     "args": {}
   },
-  "metrics": [
+ "metrics": [
     {
       "type": "ArgmaxWERMetric",
       "args": {
@@ -107,6 +107,30 @@
       "type": "ArgmaxCERMetric",
       "args": {
         "name": "CER (argmax)"
+      }
+    },
+    {
+      "type": "BeamSearchCERMetric",
+      "args": {
+        "name": "CER (beam search)"
+      }
+    },
+    {
+      "type": "BeamSearchCERMetricWithLm",
+      "args": {
+        "name": "CER (beam search with lm)"
+      }
+    },
+    {
+      "type": "BeamSearchWERMetric",
+      "args": {
+        "name": "WER (beam search)"
+      }
+    },
+    {
+      "type": "BeamSearchWERMetricWithLm",
+      "args": {
+        "name": "WER (beam search with lm)"
       }
     }
   ],
@@ -131,5 +155,9 @@
     "wandb_project": "asr_project",
     "len_epoch": 100,
     "grad_norm_clip": 10
+  },
+    "beam_search": {
+    "len_lm_path": "asr/kenlm_model.arpa"
   }
 }
+
