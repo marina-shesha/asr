@@ -15,8 +15,8 @@ class MyRNN(nn.Module):
                            bias=True, batch_first=True)
 
     def forward(self, x, lengths):
-        x = self.batch_norm(x.transpose(1, 2))
-        x = x.transpose(1, 2)
+        # x = self.batch_norm(x.transpose(1, 2))
+        # x = x.transpose(1, 2)
 
         x = nn.utils.rnn.pack_padded_sequence(x, lengths.cpu(), batch_first=True, enforce_sorted=False)
         x, hidden = self.rnn(x)

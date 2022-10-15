@@ -11,8 +11,10 @@ from hw_asr.trainer import Trainer
 from hw_asr.utils import ROOT_PATH
 from hw_asr.utils.object_loading import get_dataloaders
 from hw_asr.utils.parse_config import ConfigParser
+from hw_asr.metric.utils import calc_cer, calc_wer
 
-DEFAULT_CHECKPOINT_PATH = ROOT_PATH / "default_test_model" / "checkpoint.pth"
+ROOT = Path(__file__).absolute().resolve().parent.parent
+DEFAULT_CHECKPOINT_PATH = ROOT / "saved" / "models" / "one_batch_test" / "1015_164602" / "model_best.pth"
 
 
 def main(config, out_file):
@@ -58,18 +60,40 @@ def main(config, out_file):
             )
             batch["probs"] = batch["log_probs"].exp().cpu()
             batch["argmax"] = batch["probs"].argmax(-1)
+            cers_beam_search = []
+            wers_beam_search = []
+            cers_beam_search_lm = []
+            wers_beam_search_lm = []
+
             for i in range(len(batch["text"])):
                 argmax = batch["argmax"][i]
                 argmax = argmax[: int(batch["log_probs_length"][i])]
+                target = batch["text"][i]
+                #                 print( batch["logits"][i].cpu(), batch["log_probs_length"][i])
+                hypo = text_encoder.fast_ctc_beam_search_decoder(
+                    batch["logits"][i].cpu().numpy(), batch["log_probs_length"][i], beam_size=100)[0]
+                hypo_lm = text_encoder.fast_ctc_beam_search_decoder_with_lm(
+                    batch["logits"][i].cpu().numpy(), batch["log_probs_length"][i], beam_size=100)[0]
+                cers_beam_search.append(calc_cer(target, hypo[0]))
+                cers_beam_search_lm.append(calc_cer(target, hypo_lm[0]))
+                wers_beam_search.append(calc_wer(target, hypo[0]))
+                wers_beam_search_lm.append(calc_wer(target, hypo_lm[0]))
                 results.append(
                     {
                         "ground_trurh": batch["text"][i],
                         "pred_text_argmax": text_encoder.ctc_decode(argmax.cpu().numpy()),
-                        "pred_text_beam_search": text_encoder.ctc_beam_search(
-                            batch["probs"][i], batch["log_probs_length"][i], beam_size=100
-                        )[:10],
+                        "pred_text_beam_search": hypo,
+                        "pred_text_beam_search_with_lm": hypo_lm
                     }
                 )
+            results.append(
+                {
+                    "cer_beam_search": sum(cers_beam_search) / (len(cers_beam_search)),
+                    "cer_beam_search_lm": sum(cers_beam_search_lm) / (len(cers_beam_search_lm)),
+                    "wer_beam_search": sum(wers_beam_search) / (len(wers_beam_search)),
+                    "wer_beam_search_lm": sum(wers_beam_search_lm) / (len(wers_beam_search_lm))
+                }
+            )
     with Path(out_file).open("w") as f:
         json.dump(results, f, indent=2)
 
