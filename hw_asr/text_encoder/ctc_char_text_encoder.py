@@ -21,7 +21,8 @@ class CTCCharTextEncoder(CharTextEncoder):
         vocab = [self.EMPTY_TOK] + list(self.alphabet)
         self.ind2char = dict(enumerate(vocab))
         self.char2ind = {v: k for k, v in self.ind2char.items()}
-
+        self.init_decode = None
+        self.init_decode_lm = None
     def ctc_decode(self, inds: List[int]) -> str:
         last_char = self.EMPTY_IND
         ans = []
@@ -87,21 +88,22 @@ class CTCCharTextEncoder(CharTextEncoder):
 
     def fast_ctc_beam_search_decoder(self, logits: torch.tensor, log_probs_length,
                         beam_size: int = 100):
-
-        beam_search = build_ctcdecoder([''] + self.alphabet)
-        hypos = beam_search.decode_beams(logits[:log_probs_length], beam_width=beam_size)
+        if not self.init_decode:
+            self.init_decode = build_ctcdecoder([''] + self.alphabet)
+        hypos = self.init_decode.decode_beams(logits[:log_probs_length], beam_width=beam_size)
 
         return hypos
 
     def fast_ctc_beam_search_decoder_with_lm(self, logits: torch.tensor, log_probs_length,
                         beam_size: int = 100):
 
-        beam_search = build_ctcdecoder(
-            [''] + self.alphabet,
-            kenlm_model_path="asr/kenlm_model.arpa",
-            alpha=0.5,
-            beta=0.05
-        )
-        hypos = beam_search.decode_beams(logits[:log_probs_length], beam_width=beam_size)
+        if not self.init_decode_lm:
+            self.init_decode_lm = build_ctcdecoder(
+                [''] + self.alphabet,
+                kenlm_model_path="asr/kenlm_model.arpa",
+                alpha=0.5,
+                beta=0.05
+            )
+        hypos = self.init_decode_lm.decode_beams(logits[:log_probs_length], beam_width=beam_size)
 
         return hypos

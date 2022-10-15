@@ -41,13 +41,7 @@ class Trainer(BaseTrainer):
         super().__init__(model, criterion, metrics, optimizer, config, device)
         self.skip_oom = skip_oom
         self.text_encoder = text_encoder
-        self.beam_search = build_ctcdecoder([''] + text_encoder.alphabet)
-        self.beam_search_with_lm = build_ctcdecoder(
-            [''] + text_encoder.alphabet,
-            kenlm_model_path=self.config["beam_search"]["len_lm_path"],
-            alpha=0.5,
-            beta=0.05,
-        )
+        self.beam_size = 300
         self.config = config
         self.train_dataloader = dataloaders["train"]
         if len_epoch is None:
@@ -164,7 +158,7 @@ class Trainer(BaseTrainer):
                 self.lr_scheduler.step()
 
         metrics.update("loss", batch["loss"].item())
-        batch['beam_size'] = 300
+        batch['beam_size'] = self.beam_size
         for met in self.metrics:
             metrics.update(met.name, met(**batch))
         return batch
@@ -233,11 +227,11 @@ class Trainer(BaseTrainer):
 
         logits = log_probs.detach().cpu().numpy()
         hypos = [
-            self.beam_search.decode_beams(logits[i][:log_probs_length[i]], beam_width=300) for i in range(logits.shape[0])
+            self.text_encoder.ast_ctc_beam_search_decoder(logits[i], log_probs_length[i], beam_width=self.beam_size) for i in range(logits.shape[0])
         ]
 
         hypos_lm = [
-            self.beam_search_with_lm.decode_beams(logits[i][:log_probs_length[i]], beam_width=300) for i in range(logits.shape[0])
+            self.text_encoder.ast_ctc_beam_search_decoder_with_lm(logits[i], log_probs_length[i], beam_width=self.beam_size) for i in range(logits.shape[0])
         ]
 
         tuples = list(zip(argmax_texts, hypos, hypos_lm, text, argmax_texts_raw, audio_path))
