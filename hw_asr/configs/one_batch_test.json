@@ -12,38 +12,8 @@
   },
   "augmentations": {
     "wave": [
-      {
-        "type": "Noise",
-        "args": {
-          "p": 0.1
-        }
-      },
-      {
-        "type": "PitchShift",
-        "args": {
-          "sr": 16000,
-          "n_step": -3,
-          "p": 0.1
-        }
-      },
-      {
-        "type": "Volume",
-        "args": {
-          "gain": 1.5,
-          "gain_type": "amplitude",
-          "p": 0.1
-        }
-      }
     ],
     "spectrogram": [
-      {
-        "type": "TimeStretching",
-        "args": {
-          "n_freq": 128,
-          "fix_rate": 1.2,
-          "p": 0.1
-        }
-      }
     ]
   },
   "arch": {
@@ -107,30 +77,6 @@
       "type": "ArgmaxCERMetric",
       "args": {
         "name": "CER (argmax)"
-      }
-    },
-    {
-      "type": "BeamSearchCERMetric",
-      "args": {
-        "name": "CER (beam search)"
-      }
-    },
-    {
-      "type": "BeamSearchCERMetricWithLm",
-      "args": {
-        "name": "CER (beam search with lm)"
-      }
-    },
-    {
-      "type": "BeamSearchWERMetric",
-      "args": {
-        "name": "WER (beam search)"
-      }
-    },
-    {
-      "type": "BeamSearchWERMetricWithLm",
-      "args": {
-        "name": "WER (beam search with lm)"
       }
     }
   ],

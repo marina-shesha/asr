@@ -9,14 +9,11 @@ class MyRNN(nn.Module):
         super(MyRNN, self).__init__()
         self.input_size = input_size
         self.hidden_size = hidden_size
-        self.batch_norm = nn.BatchNorm1d(input_size)
         self.rnn = nn.LSTM(input_size=self.input_size,
                            hidden_size=self.hidden_size,
                            bias=True, batch_first=True)
 
     def forward(self, x, lengths):
-        # x = self.batch_norm(x.transpose(1, 2))
-        # x = x.transpose(1, 2)
 
         x = nn.utils.rnn.pack_padded_sequence(x, lengths.cpu(), batch_first=True, enforce_sorted=False)
         x, hidden = self.rnn(x)

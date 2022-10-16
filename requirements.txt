@@ -19,4 +19,7 @@ editdistance
 pyctcdecode
 librosa
 
+os
+math
+
 https://github.com/kpu/kenlm/archive/master.zip
