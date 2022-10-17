@@ -13,8 +13,7 @@ from hw_asr.utils.object_loading import get_dataloaders
 from hw_asr.utils.parse_config import ConfigParser
 from hw_asr.metric.utils import calc_cer, calc_wer
 
-ROOT = Path(__file__).absolute().resolve().parent.parent
-DEFAULT_CHECKPOINT_PATH = ROOT / "saved" / "models" / "one_batch_test" / "1015_164602" / "model_best.pth"
+DEFAULT_CHECKPOINT_PATH = ROOT_PATH / "default_test_model" / "checkpoint.pth"
 
 
 def main(config, out_file):
@@ -70,20 +69,22 @@ def main(config, out_file):
                 argmax = argmax[: int(batch["log_probs_length"][i])]
                 target = batch["text"][i]
                 #                 print( batch["logits"][i].cpu(), batch["log_probs_length"][i])
-                hypo = text_encoder.fast_ctc_beam_search_decoder(
-                    batch["logits"][i].cpu().numpy(), batch["log_probs_length"][i], beam_size=100)[0]
-                hypo_lm = text_encoder.fast_ctc_beam_search_decoder_with_lm(
-                    batch["logits"][i].cpu().numpy(), batch["log_probs_length"][i], beam_size=100)[0]
-                cers_beam_search.append(calc_cer(target, hypo[0]))
-                cers_beam_search_lm.append(calc_cer(target, hypo_lm[0]))
-                wers_beam_search.append(calc_wer(target, hypo[0]))
-                wers_beam_search_lm.append(calc_wer(target, hypo_lm[0]))
+                hypos = text_encoder.fast_ctc_beam_search_decoder(
+                    batch["logits"][i].cpu().numpy(), batch["log_probs_length"][i], beam_size=100)[:10]
+                hypos_lm = text_encoder.fast_ctc_beam_search_decoder_with_lm(
+                    batch["logits"][i].cpu().numpy(), batch["log_probs_length"][i], beam_size=100)[:10]
+                text_beam_search = [hypo[0] for hypo in hypos]
+                text_beam_search_lm = [hypo[0] for hypo in hypos_lm]
+                cers_beam_search.append(calc_cer(target, hypos[0][0]) * 100)
+                cers_beam_search_lm.append(calc_cer(target, hypos_lm[0][0]) * 100)
+                wers_beam_search.append(calc_wer(target, hypos[0][0]) * 100)
+                wers_beam_search_lm.append(calc_wer(target, hypos_lm[0][0]) * 100)
                 results.append(
                     {
                         "ground_trurh": batch["text"][i],
                         "pred_text_argmax": text_encoder.ctc_decode(argmax.cpu().numpy()),
-                        "pred_text_beam_search": hypo,
-                        "pred_text_beam_search_with_lm": hypo_lm
+                        "pred_text_beam_search": text_beam_search,
+                        "pred_text_beam_search_with_lm": text_beam_search_lm
                     }
                 )
             results.append(
@@ -94,6 +95,9 @@ def main(config, out_file):
                     "wer_beam_search_lm": sum(wers_beam_search_lm) / (len(wers_beam_search_lm))
                 }
             )
+            logger.info('metrics test-{}'.format(config['data']['test']['datasets'][0]['args']['part']))
+            logger.info(results[-1])
+
     with Path(out_file).open("w") as f:
         json.dump(results, f, indent=2)
 
