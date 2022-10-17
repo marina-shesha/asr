@@ -93,7 +93,6 @@ def main(config, out_file):
                 "wer_beam_search_lm": sum(wers_beam_search_lm) / (len(wers_beam_search_lm))
             }
         )
-        logger.info('metrics test-{}'.format(config['data']['test']['datasets'][0]['args']['part']))
         logger.info(results[-1])
 
     with Path(out_file).open("w") as f:
