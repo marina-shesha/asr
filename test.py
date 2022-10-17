@@ -12,6 +12,7 @@ from hw_asr.utils import ROOT_PATH
 from hw_asr.utils.object_loading import get_dataloaders
 from hw_asr.utils.parse_config import ConfigParser
 from hw_asr.metric.utils import calc_cer, calc_wer
+from hw_asr.base.base_text_encoder import BaseTextEncoder
 
 DEFAULT_CHECKPOINT_PATH = ROOT_PATH / "default_test_model" / "checkpoint.pth"
 
@@ -75,6 +76,7 @@ def main(config, out_file):
                     batch["logits"][i].cpu().numpy(), batch["log_probs_length"][i], beam_size=100)[:10]
                 text_beam_search = [hypo[0] for hypo in hypos]
                 text_beam_search_lm = [hypo[0] for hypo in hypos_lm]
+                target = BaseTextEncoder.normalize_text(target)
                 cers_beam_search.append(calc_cer(target, hypos[0][0]) * 100)
                 cers_beam_search_lm.append(calc_cer(target, hypos_lm[0][0]) * 100)
                 wers_beam_search.append(calc_wer(target, hypos[0][0]) * 100)
