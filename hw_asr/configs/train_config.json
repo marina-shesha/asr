@@ -17,7 +17,7 @@
     ]
   },
   "arch": {
-    "type": "DeepSpeech2",
+    "type": "DeepSpeech",
     "args": {
       "n_feats": 128,
       "hidden_size": 512,

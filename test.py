@@ -45,6 +45,8 @@ def main(config, out_file):
     model.eval()
 
     results = []
+    cers_beam_search_lm = []
+    wers_beam_search_lm = []
 
     with torch.no_grad():
         for batch_num, batch in enumerate(tqdm(dataloaders["test"])):
@@ -60,45 +62,39 @@ def main(config, out_file):
             )
             batch["probs"] = batch["log_probs"].exp().cpu()
             batch["argmax"] = batch["probs"].argmax(-1)
-            cers_beam_search = []
-            wers_beam_search = []
-            cers_beam_search_lm = []
-            wers_beam_search_lm = []
 
             for i in range(len(batch["text"])):
                 argmax = batch["argmax"][i]
                 argmax = argmax[: int(batch["log_probs_length"][i])]
                 target = batch["text"][i]
                 #                 print( batch["logits"][i].cpu(), batch["log_probs_length"][i])
-                hypos = text_encoder.fast_ctc_beam_search_decoder(
-                    batch["logits"][i].cpu().numpy(), batch["log_probs_length"][i], beam_size=100)[:10]
+
                 hypos_lm = text_encoder.fast_ctc_beam_search_decoder_with_lm(
                     batch["logits"][i].cpu().numpy(), batch["log_probs_length"][i], beam_size=100)[:10]
-                text_beam_search = [hypo[0] for hypo in hypos]
+
                 text_beam_search_lm = [hypo[0] for hypo in hypos_lm]
                 target = BaseTextEncoder.normalize_text(target)
-                cers_beam_search.append(calc_cer(target, hypos[0][0]) * 100)
+
                 cers_beam_search_lm.append(calc_cer(target, hypos_lm[0][0]) * 100)
-                wers_beam_search.append(calc_wer(target, hypos[0][0]) * 100)
+
                 wers_beam_search_lm.append(calc_wer(target, hypos_lm[0][0]) * 100)
                 results.append(
                     {
                         "ground_trurh": batch["text"][i],
                         "pred_text_argmax": text_encoder.ctc_decode(argmax.cpu().numpy()),
-                        "pred_text_beam_search": text_beam_search,
                         "pred_text_beam_search_with_lm": text_beam_search_lm
                     }
                 )
-            results.append(
-                {
-                    "cer_beam_search": sum(cers_beam_search) / (len(cers_beam_search)),
-                    "cer_beam_search_lm": sum(cers_beam_search_lm) / (len(cers_beam_search_lm)),
-                    "wer_beam_search": sum(wers_beam_search) / (len(wers_beam_search)),
-                    "wer_beam_search_lm": sum(wers_beam_search_lm) / (len(wers_beam_search_lm))
-                }
-            )
-            logger.info('metrics test-{}'.format(config['data']['test']['datasets'][0]['args']['part']))
-            logger.info(results[-1])
+        results.append(
+            {
+
+                "cer_beam_search_lm": sum(cers_beam_search_lm) / (len(cers_beam_search_lm)),
+
+                "wer_beam_search_lm": sum(wers_beam_search_lm) / (len(wers_beam_search_lm))
+            }
+        )
+        logger.info('metrics test-{}'.format(config['data']['test']['datasets'][0]['args']['part']))
+        logger.info(results[-1])
 
     with Path(out_file).open("w") as f:
         json.dump(results, f, indent=2)
