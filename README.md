@@ -23,7 +23,5 @@ Run test.py file to evaluate metrics and get preductions
 %run -i asr/test.py \
 --resume /content/asr/models/model_best.pth\
 --config /content/asr/hw_asr/configs/test_config.json\
---test-data-folder asr/test_data \
--b 5\
--o test_data_out.json
+-o test_clean_out.json
 ```
