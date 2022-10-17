@@ -1,4 +1,4 @@
-# ASR project barebones
+# ASR project 
 
 ## Installation guide
 
